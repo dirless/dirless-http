@@ -2,7 +2,7 @@ require "http/client"
 require "openssl"
 
 module Dirless
-  module HTTP
+  module Net
     # HTTP::Client subclass that connects to a specific IP address while using
     # the original hostname for TLS SNI and certificate verification.
     #
@@ -13,7 +13,7 @@ module Dirless
     #
     # Usage:
     #   tls = OpenSSL::SSL::Context::Client.new
-    #   client = Dirless::HTTP::TargetedClient.new("1.2.3.4", "example.com", 443, tls)
+    #   client = Dirless::Net::TargetedClient.new("1.2.3.4", "example.com", 443, tls)
     #   response = client.get("/health")
     class TargetedClient < ::HTTP::Client
       def initialize(@target_ip : String, sni_host : String, port : Int32, tls : OpenSSL::SSL::Context::Client)

@@ -20,16 +20,31 @@ module Dirless
         super(sni_host, port, tls: tls)
       end
 
-      private def connect : IO
-        socket = TCPSocket.new(@target_ip, @port, connect_timeout: @connect_timeout)
-        socket.read_timeout = @read_timeout if @read_timeout
-        socket.write_timeout = @write_timeout if @write_timeout
-        OpenSSL::SSL::Socket::Client.new(
-          socket,
-          context: @tls.as(OpenSSL::SSL::Context::Client),
-          sync_close: true,
-          hostname: @host,
-        )
+      # Crystal 1.14+ moved connection logic from #connect to #io. Override #io
+      # so TCP connects to @target_ip while TLS SNI still uses @host (the FQDN).
+      private def io
+        cached = @io
+        return cached if cached
+        unless @reconnect
+          raise "This HTTP::Client cannot be reconnected"
+        end
+
+        tcp = TCPSocket.new(@target_ip, @port, connect_timeout: @connect_timeout)
+        tcp.read_timeout = @read_timeout if @read_timeout
+        tcp.write_timeout = @write_timeout if @write_timeout
+        tcp.sync = false
+
+        if tls = @tls
+          begin
+            ssl = OpenSSL::SSL::Socket::Client.new(tcp, context: tls.as(OpenSSL::SSL::Context::Client), sync_close: true, hostname: @host.rchop('.'))
+            @io = ssl
+          rescue ex
+            tcp.close
+            raise ex
+          end
+        else
+          @io = tcp
+        end
       end
     end
   end

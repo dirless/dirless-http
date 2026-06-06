@@ -55,7 +55,7 @@ module Dirless
       # Override to also suppress SSL teardown errors, matching Crystal's intent.
       def close : Nil
         @io.try &.close
-      rescue IO::Error, OpenSSL::SSL::Error
+      rescue IO::Error | OpenSSL::SSL::Error
         nil
       ensure
         @io = nil

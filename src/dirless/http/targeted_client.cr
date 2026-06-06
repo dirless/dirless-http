@@ -47,16 +47,18 @@ module Dirless
         end
       end
 
-      # Crystal's HTTP::Client#exec_internal calls close() in the retry path when
-      # Response.from_io? returns nil (server closed connection after body). In TLS 1.3
-      # the server may send close_notify immediately after the body, causing SSL_shutdown
-      # to return bad_record_mac when we try to close an already-closed TLS session.
-      # Override close to suppress those teardown errors so they don't mask responses.
+      # Crystal's HTTP::Client#close only rescues IO::Error, but in TLS 1.3 Caddy
+      # sends close_notify immediately after the response body. When Crystal's
+      # exec_internal retry path calls close() on the already-shutdown session,
+      # SSL_shutdown raises OpenSSL::SSL::Error (bad_record_mac). That escapes
+      # uncaught (not IO::Error) and masks the actual HTTP response.
+      # Override to also suppress SSL teardown errors, matching Crystal's intent.
       def close : Nil
-        @io.try { |io| io.close rescue nil }
+        @io.try &.close
+      rescue IO::Error, OpenSSL::SSL::Error
+        nil
       ensure
         @io = nil
-        @reconnect = false
       end
     end
   end

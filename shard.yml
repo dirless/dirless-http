@@ -1,5 +1,5 @@
 name: dirless-http
-version: 0.1.0
+version: 0.2.0
 
 description: Shared HTTP utilities for Dirless — TargetedClient for SNI-aware IP-targeted TLS connections
 
